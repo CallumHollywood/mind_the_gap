@@ -1,0 +1,642 @@
+---
+title: "MindTheGap"
+author: "Callum Hollywood"
+date: "28 December 2017"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+packs <- c("tidyverse", "dplyr", "gapminder", "reshape2", "rworldmap")
+lapply(packs, require, character.only = T)
+options(scipen = 999)
+```
+
+## A Brief Exploratory Data Analysis of the Gapminder Dataset
+## Shipped with the R Gapminder Package
+***
+***
+***
+<br>
+
+#### We can get a feel for the general composition of this dataset
+#### by looking at both ends of the dataframe, as it is shipped. Supported by some
+#### additional basic descriptive statistics: ...
+
+<br>
+
+```{r cars}
+head(gapminder)
+tail(gapminder)
+str(gapminder)
+summary(gapminder)
+```
+<br>
+
+#### Data Summary: -- 
+#### It looks like we have over 1700 observations detailing measurements
+#### for 3 key features, 1) Life Expectancy, 2) Population and 3) GDP per Capita
+#### for 142 countries, which have also been labeled with their appropriate continent.
+#### The duration for capturing this data appears to be from 1952 to 2007 and has been captured 
+#### at 5 year intervals.
+
+<br>
+
+***
+***
+***
+
+<br>
+
+#### We can proceed to examine the gapminder features, by country, over time: ...
+
+<br>
+```{r features1, fig.align="center", echo=TRUE}
+#========================
+# plot lifeExp over the survey duration, by country 
+#========================
+
+ggplot(gapminder, aes(x = year, y = lifeExp, group = country)) +
+  geom_line() +
+  theme(legend.position = "none") +
+  ggtitle("Life Expectancy by Country") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_text(data = gapminder[gapminder$year == 2007,], aes(label = country)) +
+  xlab("Year") +
+  ylab("Life Expectancy (Years)") 
+```
+<br>
+
+#### Looks like there's a lot going on with all the countries represented above.
+#### What we can discern though is that there appears to be a general increase in
+#### life expectancy, though there are definitely some countries that seem to buck that trend.
+#### We will return to this and examine in greater depth!
+***
+***
+***
+
+<br>
+
+```{r features2, fig.align="center", echo=TRUE}
+
+#========================
+# plot pop over the survey duration, by country 
+#========================
+
+ggplot(gapminder, aes(year, pop, group = country)) +
+  geom_line() +
+  theme(legend.position = "none") +
+  ggtitle("Population by Country") +
+  geom_text(data = gapminder[gapminder$year == 2007,], aes(label = country)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  xlab("Year") +
+  ylab("Population")
+
+```
+
+<br>
+
+#### Jeez Louise - Look at the population climbs by China and India!
+***
+***
+***
+
+<br>
+
+```{r features3, fig.align="center", echo=TRUE}
+
+#========================
+# plot gdpPercap over the survey duration, by country 
+#========================
+
+ggplot(gapminder, aes(year, gdpPercap, group = country)) +
+  geom_line() +
+  theme(legend.position = "none") +
+  ggtitle("All Countries GDP Per Capita") +
+  geom_text(data = gapminder[gapminder$year == 1962,], aes(label = country)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  xlab("Year") +
+  ylab("GDP Per Capita ($)")
+```
+
+<br>
+
+#### In generel, i.e. omitting the GDP per Capita of Kuwait, we can see that this feature
+#### tends to be increasing over time.  It would be interesting to see what is going on with Kuwait later. 
+#### And if there are any other countries that have a reduced GDP
+***
+***
+***
+#### The graphs above show the gapminder features at the country level, and it all got
+#### a bit busy on the eyes. Let's aggregate to the 'Continent' level: ...
+
+<br>
+
+```{r continents, fig.align="center", echo=TRUE}
+
+continent_view <- gapminder %>% 
+  group_by(continent, year) %>% 
+  summarise(mean_lifeExp = mean(lifeExp, na.rm = T),
+            mean_pop = mean(pop, na.rm = T),
+            mean_gdpPercap = mean(gdpPercap, na.rm = T))
+
+head(continent_view)
+
+```
+
+```{r continent1, fig.align="center", echo=TRUE}
+
+#========================
+# plot mean_lifeExp over the survey duration, by continent 
+#========================
+
+continent_view %>% 
+  select(-c(mean_pop, mean_gdpPercap)) %>% 
+  ggplot(aes(year, mean_lifeExp, group = continent)) +
+  geom_line() +
+  ggtitle("Average Life Expectancy by Continent") +
+  geom_text(data = continent_view %>% filter(year == 2002) ,
+            aes(label = continent))+
+  theme(plot.title = element_text(hjust = 0.5)) +
+  xlab("Years") +
+  ylab("Average Life Expectancy (Years)")
+
+```
+
+<br>
+
+#### Across the board we can see that life expecnacy is on the increase and that there appears to 
+#### be a distinct difference in average life expectancy across the continents. Of particular note 
+#### is that not ony is Africa trailing, it appears to have levelled off through the late 80's and 90's.
+***
+***
+***
+
+<br>
+
+```{r continent2, fig.align="center", echo=TRUE}
+
+#========================
+# plot mean_pop over the survey duration, by continent 
+#========================
+
+continent_view %>% 
+  select(-c(mean_lifeExp, mean_gdpPercap)) %>% 
+  ggplot(aes(year, mean_pop, group = continent)) +
+  geom_line() +
+  ggtitle("Average Population by Continent") +
+  geom_text(data = continent_view %>% filter(year == 2002),
+            aes(label = continent)) +
+  xlab("Years") +
+  ylab("Population") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+<br>
+
+***
+***
+***
+
+<br>
+
+```{r continent3, fig.align="center", echo=TRUE}
+
+#========================
+# plot mean_gdpPercap over the survey duration, by continent 
+#========================
+
+continent_view %>% 
+  select(-c(mean_lifeExp, mean_pop)) %>% 
+  ggplot(aes(year, mean_gdpPercap, group = continent)) +
+  geom_line() +
+  ggtitle("Average GDP per Capita by Continent") +
+  geom_text(data = continent_view %>% filter(year == 2002),
+            aes(label = continent)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  xlab("Year") +
+  ylab("Average GDP ($)")
+```
+
+<br>
+
+#### It appears that the average GDP in both Oceania and Eurpoe is outpacing
+#### Asia and the Americas, which are all pulling away from Africa
+#### Africa definitely seems to out of step with the other continents.
+***
+***
+***
+#### Let's have a look at the continents individually to see how the gapminder features are interplaying:...  
+
+<br>
+
+```{r africa, fig.align="center", out.width="2000px", out.height="1000px", echo=TRUE}
+
+africa <- gapminder %>% filter(continent == "Africa") %>% select(-c(continent))
+
+africa_melt <- melt(africa, 
+                    id.vars = c("country", "year"),
+                    variable.name = "feature",
+                    value.name = "value") 
+
+africa_melt %>% 
+  ggplot(aes(year, value, group = country)) +
+  geom_line() +
+  facet_wrap(~ feature, scales = "free_y") +
+  geom_text(data = africa_melt %>% filter(year == 1972),
+            aes(label = country)) +
+  ggtitle("Africa; Life Expectancy, Population and GDP per Capita") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+<br>
+
+***
+***
+***
+
+<br>
+
+```{r americas, fig.align="center", out.width="2000px", out.height="1000px", echo=TRUE}
+
+americas <- gapminder %>% filter(continent == "Americas") %>%  select(-c(continent))
+
+americas_melt <- melt(americas, 
+                      id.vars = c("country", "year"),
+                      variable.name = 'feature',
+                      value.name = "value")
+
+americas_melt %>% 
+  ggplot(aes(year, value, group = country)) +
+  geom_line() +
+  facet_wrap(~feature, scales = 'free_y') +
+  geom_text(data = americas_melt %>% filter(year == 1997),
+            aes(label = country)) +
+  ggtitle("Americas; Life Expectancy, Population and GDP per Capita") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+<br>
+
+***
+***
+***
+
+<br>
+
+
+```{r asia, fig.align="center", out.width="2000px", out.height="1000px", echo=TRUE}
+
+asia <- gapminder %>% filter(continent == "Asia") %>% select(-c(continent))
+
+asia_melt <- melt(asia, 
+                  id.vars = c("country", "year"),
+                  variable.name = "feature",
+                  value.name = "value")
+
+asia_melt %>% 
+  ggplot(aes(year, value, group = country)) +
+  geom_line() +
+  facet_wrap(~ feature, scales = "free_y") +
+  geom_text(data = asia_melt %>% filter(year == 1997),
+            aes(label = country)) +
+  ggtitle("Asia; Life Expectancy, Population and GDP per Capita") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+<br>
+
+***
+***
+***
+
+<br>
+
+```{r europe, fig.align="center", out.width="2000px", out.height="1000px", echo=TRUE}
+europe <- gapminder %>% filter(continent == "Europe") %>% select(-c(continent))
+
+europe_melt <- melt(europe,
+                    id.vars = c("country", "year"),
+                    variable.name = "feature",
+                    value.name = "value")
+
+
+europe_melt %>% 
+  ggplot(aes(year, value, group = country)) +
+  geom_line() +
+  facet_wrap(~ feature, scales = 'free_y') +
+  geom_text(data = europe_melt %>% filter(year == 1997),
+            aes(label = country)) +
+  ggtitle("Europe; Life Expectancy, Population and GDP per Capita") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+<br>
+
+***
+***
+***
+
+<br>
+
+```{r oceania, fig.align="center", out.width="2000px", out.height="1000px", echo=TRUE}
+
+oceania <- gapminder %>% filter(continent == "Oceania") %>% select(-c(continent))
+
+oceania_melt <- melt(oceania,
+                    id.vars = c("country", "year"),
+                    variable.name = "feature",
+                    value.name = "value")
+
+oceania_melt %>% 
+  ggplot(aes(year, value, group = country)) +
+  geom_line() +
+  facet_wrap(~ feature, scales = "free_y") +
+  geom_text(data = oceania_melt %>% filter(year == 1997),
+          aes(label = country)) +
+  ggtitle("Oceania; Life Expectancy, Population and GDP per Capita") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+<br>
+
+***
+***
+***
+
+<br>
+
+#### Africa still requires further examination. Let's have a look at all the countries where there was a dip in life expectancy observed, at some/any point in the data:...
+
+<br>
+
+```{r africa_le_dip, fig.align="center", out.width="2000px", out.height="1000px", echo=TRUE}
+
+##################################################################
+# Drill into Africa and examine at the country level
+# Filter out countries that never took a dip in lifeExp at any point
+# Facet for better visuals
+##################################################################
+
+lifeexpdrops <- gapminder::gapminder %>% 
+  filter(continent == "Africa") %>% 
+  select(-c(continent, pop, gdpPercap)) %>% 
+  spread(year, lifeExp)
+
+indx <- colSums(apply(lifeexpdrops %>% select(-c(country)), 1L, diff) > 0L) == (ncol(lifeexpdrops%>% select(-c(country))) - 1L)
+lifeexpdrops <-  lifeexpdrops[!indx,]$country
+
+gapminder::gapminder %>% 
+  filter(continent == "Africa") %>% 
+  filter(country %in% lifeexpdrops) %>% 
+  select(-c(continent)) %>% 
+  ggplot(aes(year, lifeExp, group = country)) +
+  geom_line() +
+  facet_wrap(~ country) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ggtitle("African Countries that Exhibited at Least One Life Expectatncy Reduction") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  xlab("Year") +
+  ylab("Life Expectancy (Years)")
+
+```
+
+<br>
+
+***
+***
+***
+
+<br>
+
+#### Let's start to visualise with a map or two:...
+
+<br>
+
+```{r africa_le_drop, out.width="2000px", out.height="1000px", echo=TRUE}
+
+
+lifeexpdrops <- gapminder::gapminder %>% 
+  filter(continent == "Africa") %>% 
+  select(-c(continent, pop, gdpPercap)) %>% 
+  spread(year, lifeExp)
+
+indx <- colSums(apply(lifeexpdrops %>% select(-c(country)), 1L, diff) > 0L) == (ncol(lifeexpdrops%>% select(-c(country))) - 1L)
+lifeexpdrops <-  lifeexpdrops[!indx,]$country
+
+africa <- gapminder::gapminder %>% 
+  filter(continent == "Africa") %>% 
+  select(-c(continent)) %>% 
+  filter(year == 2002) %>% 
+  mutate(lifeExpDrop = if_else(country %in% lifeexpdrops, "dropped at least once", "has never dropped"))
+
+sPDF <- joinCountryData2Map(africa,
+                            joinCode = "NAME",
+                            nameJoinColumn = "country")
+
+par(mai = c(0,0,0.2,0), xaxs="i", yaxs = "i")
+mapCountryData(sPDF, 
+               nameColumnToPlot = "lifeExpDrop", 
+               catMethod="categorical", 
+               numCats = 2,
+               addLegend =T,
+               mapTitle = "African Countries with at least One Life Expectancy Drop",
+               mapRegion = "Africa")
+
+country_coord<-data.frame(coordinates(sPDF),stringsAsFactors=F)
+country_coord_B <- country_coord[row.names(country_coord) %in% africa$country,]
+
+text(x = country_coord_B$X1, y = country_coord_B$X2, 
+     labels = row.names(country_coord_B))
+
+```
+
+<br>
+
+***
+***
+***
+
+<br>
+
+```{r the_rest_le_drop, out.width="2000px", out.height="1000px", echo=TRUE}
+
+
+lifeexpdrops <- gapminder::gapminder %>% 
+  select(-c(continent, pop, gdpPercap)) %>% 
+  spread(year, lifeExp)
+
+indx <- colSums(apply(lifeexpdrops %>% select(-c(country)), 1L, diff) > 0L) == (ncol(lifeexpdrops%>% select(-c(country))) - 1L)
+lifeexpdrops <-  lifeexpdrops[!indx,]$country
+
+worldLifeExpDrop <- gapminder::gapminder %>% 
+  select(-c(continent)) %>% 
+  filter(year == 2002) %>% 
+  mutate(lifeExpDrop = if_else(country %in% lifeexpdrops, "dropped at least once", "has never dropped"))
+
+
+worldLifeExpDropExcptAfrica <- worldLifeExpDrop %>% 
+  filter(lifeExpDrop == "dropped at least once") %>% 
+  filter(!country %in% africa$country)
+
+sPDF_World <- joinCountryData2Map(worldLifeExpDrop,
+                            joinCode = "NAME",
+                            nameJoinColumn = "country")
+
+par(mai = c(0,0,0.2,0), xaxs="i", yaxs = "i")
+mapCountryData(sPDF_World, 
+               nameColumnToPlot = "lifeExpDrop", 
+               catMethod="categorical", 
+               numCats = 2,
+               addLegend =T,
+               mapTitle = "Countries with at least One Life Expectancy Drop"
+               )
+
+#country_coord <- data.frame(coordinates(sPDF_World),stringsAsFactors=F)
+country_coord_C <- country_coord[row.names(country_coord) %in% worldLifeExpDropExcptAfrica$country,]
+
+text(x = country_coord_C$X1, y = country_coord_C$X2, 
+     labels = row.names(country_coord_C))
+
+```
+
+<br>
+
+***
+***
+***
+
+<br>
+
+```{r pop_drop, out.width="2000px", out.height="1000px", echo=TRUE}
+
+pop_drops <- gapminder::gapminder %>% 
+  select(-c(continent, lifeExp, gdpPercap)) %>% 
+  spread(year, pop)
+
+indx <- colSums(apply(pop_drops %>% select(-c(country)), 1L, diff) > 0L) == (ncol(pop_drops%>% select(-c(country))) - 1L)
+pop_drops <-  pop_drops[!indx,]$country
+
+world_popdrops <- gapminder::gapminder %>% 
+  select(-c(continent)) %>% 
+  filter(year == 2002) %>% 
+  mutate(pop_drops = if_else(country %in% pop_drops, "dropped at least once", "has never dropped"))
+
+world_popdrops_slim <- world_popdrops[world_popdrops$pop_drops == 'dropped at least once',]
+
+sPDF_worldpopdrop <- joinCountryData2Map(world_popdrops,
+                                  joinCode = "NAME",
+                                  nameJoinColumn = "country")
+
+par(mai = c(0,0,0.2,0), xaxs="i", yaxs = "i")
+mapCountryData(sPDF_worldpopdrop, 
+               nameColumnToPlot = "pop_drops", 
+               catMethod="categorical", 
+               numCats = 2,
+               addLegend =T,
+               mapTitle = "Countries with at least One Population Drop")
+
+#country_coord <- data.frame(coordinates(sPDF_World),stringsAsFactors=F)
+country_coord_D <- country_coord[row.names(country_coord) %in% world_popdrops_slim$country,]
+
+text(x = country_coord_D$X1, y = country_coord_D$X2, 
+     labels = row.names(country_coord_D))
+
+```
+
+<br>
+
+***
+***
+***
+
+<br>
+
+```{r gdp_drop, out.width="2000px", out.height="1000px", echo=TRUE}
+
+
+gdp_drops <- gapminder::gapminder %>% 
+  select(-c(continent, lifeExp, pop)) %>% 
+  spread(year, gdpPercap)
+
+indx <- colSums(apply(gdp_drops %>% select(-c(country)), 1L, diff) > 0L) == (ncol(gdp_drops%>% select(-c(country))) - 1L)
+gdp_drops <-  gdp_drops[!indx,]$country
+
+world_gdpdrops <- gapminder::gapminder %>% 
+  select(-c(continent)) %>% 
+  filter(year == 2002) %>% 
+  mutate(gdp_drops = if_else(country %in% gdp_drops, "dropped at least once", "has never dropped"))
+
+world_gdpdrops_slim <- world_gdpdrops[world_gdpdrops$gdp_drops == 'dropped at least once',]
+
+
+sPDF_worldgdpdrop <- joinCountryData2Map(world_gdpdrops,
+                                         joinCode = "NAME",
+                                         nameJoinColumn = "country")
+
+par(mai = c(0,0,0.2,0), xaxs="i", yaxs = "i")
+mapCountryData(sPDF_worldgdpdrop, 
+               nameColumnToPlot = "gdp_drops", 
+               catMethod="categorical", 
+               numCats = 2,
+               addLegend =T,
+               mapTitle = "Countries with at least One GDP Drop")
+
+#country_coord <- data.frame(coordinates(sPDF_World),stringsAsFactors=F)
+country_coord_E <- country_coord[!row.names(country_coord) %in% world_gdpdrops_slim$country,]
+
+text(x = country_coord_E$X1, y = country_coord_E$X2, 
+     labels = row.names(country_coord_E))
+
+```
+
+<br>
+
+#### It appears that with respect to GDP it is not unusual to have a dip in GDP year on year,
+#### for many countries. Let's instead have a look to see if any countries have GDPs in 2007 that 
+#### are less than our starting point in 1952: ...
+
+<br>
+
+```{r total_gdp_drop, fig.align="center", out.width="2000px", out.height="1000px", echo=TRUE}
+
+gdp_world_drops <- gapminder::gapminder %>% 
+  filter(year %in% c(1952, 2007)) %>% 
+  select(-c(lifeExp, pop, continent)) %>% 
+  spread(year, gdpPercap) %>% 
+  mutate(gdp_reduced = `2007` - `1952`) %>% 
+  mutate(gdp_reduced_cat = if_else(gdp_reduced < 0, "Has Reduced Overall", "Has Increased Overall")) %>% 
+  filter(gdp_reduced_cat == "Has Reduced Overall")
+
+gdp_world_drops %>% select(-c(gdp_reduced_cat))
+
+sPDF_gdp_world_drops <- joinCountryData2Map(gdp_world_drops,
+                                            joinCode = "NAME",
+                                            nameJoinColumn = "country")
+
+par(mai = c(0,0,0.2,0), xaxs="i", yaxs = "i")
+mapCountryData(sPDF_gdp_world_drops, 
+               nameColumnToPlot = "gdp_reduced_cat", 
+               catMethod="categorical", 
+               numCats = 2,
+               addLegend =F,
+               mapTitle = "Countries with a Smaller GDP in 2007 than in 1952"
+)
+
+#country_coord <- data.frame(coordinates(sPDF_gdp_world_drops),stringsAsFactors=F)
+country_coord_F <- country_coord[row.names(country_coord) %in% sPDF_gdp_world_drops$country,]
+
+text(x = country_coord_F$X1, y = country_coord_F$X2, 
+     labels = row.names(country_coord_F))
+
+```
